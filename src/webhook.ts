@@ -75,6 +75,29 @@ export class WebhookManager {
       ...this.processHeaderTemplates(webhook.headers || {}, webhook.secret)
     };
 
+    // Log details if debug mode is enabled
+    if (this.config.debug) {
+      console.log('🐛 [Webhook Debug] Sending request:');
+      console.log(`   URL: ${webhook.url}`);
+      console.log(`   Method: ${webhook.method}`);
+      const headersString = JSON.stringify(headers, null, 2);
+      console.log(`   Headers: ${headersString}`);
+      console.log(`   Body: ${body}`);
+
+      // Construct equivalent curl command for debugging
+      let curlCommand = `curl --request ${webhook.method} \\\n     --url '${webhook.url}'`;
+      for (const [key, value] of Object.entries(headers)) {
+        curlCommand += ` \\\n     --header '${key}: ${value}'`;
+      }
+      if (body && webhook.method !== 'GET' && webhook.method !== 'HEAD') {
+        // Escape single quotes in the body for the curl command
+        const escapedBody = body.replace(/'/g, "'\\''");
+        curlCommand += ` \\\n     --data '${escapedBody}'`;
+      }
+      console.log('🐛 [Webhook Debug] Equivalent curl command:');
+      console.log(curlCommand);
+    }
+
     // Retry logic
     for (let attempt = 1; attempt <= webhook.retryCount; attempt++) {
       try {
