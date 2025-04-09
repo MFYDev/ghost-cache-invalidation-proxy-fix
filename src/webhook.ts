@@ -109,6 +109,12 @@ export class WebhookManager {
 
         if (!response.ok) {
           const errorText = await response.text();
+          if (this.config.debug) {
+            console.log(`🐛 [Webhook Debug] Received error response:`);
+            console.log(`   Status: ${response.status} ${response.statusText}`);
+            console.log(`   Headers: ${JSON.stringify(response.headers.raw(), null, 2)}`); // Log raw headers
+            console.log(`   Body: ${errorText}`);
+          }
           throw new Error(`HTTP error ${response.status}: ${errorText}`);
         }
         
