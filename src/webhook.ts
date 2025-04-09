@@ -45,9 +45,9 @@ export class WebhookManager {
     // - "/post-permalink" - Single post
     // - "/, /page/*, /rss" - Multiple pages
     // - "/page/*" - Wildcard paths
-    const urls = purgeAll 
-      ? ['/*'] 
-      : pattern.split(',').map(url => url.trim());
+    const urls = purgeAll
+      ? [`${this.config.ghostPublicUrl}/*`] // Use public URL for purge all pattern
+      : pattern.split(',').map(url => `${this.config.ghostPublicUrl}${url.trim()}`); // Prepend public URL to each path
     
     // From Ghost documentation, common patterns include:
     // - "/" - Home page

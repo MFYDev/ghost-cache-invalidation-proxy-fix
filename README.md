@@ -20,18 +20,19 @@ The `magicpages/ghost-cache-invalidation-proxy` Docker image is available on [Do
 
 #### Required variables
 
-- `GHOST_URL`: The URL of your Ghost CMS instance. Ideally, the hostname of your Ghost container and the port it listens on (e.g., `http://ghost:2368`).
+- `GHOST_INTERNAL_URL`: The internal URL of your Ghost CMS instance. This is the URL the proxy will forward requests to (e.g., `http://ghost:2368`).
 - `WEBHOOK_URL`: The URL of the webhook endpoint to call when cache invalidation is needed.
 
 #### Optional variables
 
+- `GHOST_PUBLIC_URL`: (Optional) The public-facing URL of your Ghost instance (e.g., `https://your-blog.com`). This URL is prepended to the paths provided in the `X-Cache-Invalidate` header to form the absolute URLs sent in the webhook payload (`${urls}`). If not set, `GHOST_INTERNAL_URL` is used for this purpose.
 - `PORT`: The port on which the proxy listens for incoming requests. Defaults to `3000`.
 - `DEBUG`: Set to `true` to enable debug logging. Defaults to `false`.
 - `WEBHOOK_METHOD`: HTTP method to use for the webhook call. Defaults to `POST`.
 - `WEBHOOK_SECRET`: Secret key for webhook authentication. Will be used in the Authorization header if provided.
 - `WEBHOOK_HEADERS`: JSON string of additional headers to include in the webhook request.
 - `WEBHOOK_BODY_TEMPLATE`: JSON template for the webhook request body. Supports the following variables:
-  - `${urls}`: Array of URLs/patterns from the `X-Cache-Invalidate` header.
+  - `${urls}`: Array of absolute URLs/patterns derived from the `X-Cache-Invalidate` header, prefixed with `GHOST_PUBLIC_URL` (or `GHOST_INTERNAL_URL` if `GHOST_PUBLIC_URL` is not set).
   - `${purgeAll}`: Boolean indicating if all cache should be purged.
   - `${timestamp}`: Current timestamp.
   - `${pattern}`: Raw pattern from the `X-Cache-Invalidate` header.
@@ -41,8 +42,6 @@ The `magicpages/ghost-cache-invalidation-proxy` Docker image is available on [Do
 ### Example Docker Compose Configuration
 
 ```yaml
-version: '3.8'
-
 services:
   ghost:
     image: ghost:5
@@ -55,15 +54,20 @@ services:
 
   cache-invalidation:
     image: magicpages/ghost-cache-invalidation-proxy:latest
+    container_name: ghost-cache-invalidation
+    restart: always
     environment:
-      - GHOST_URL=http://ghost:2368
-      - PORT=4000
-      - DEBUG=true
-      - WEBHOOK_URL=https://api.example.com/invalidate
-      - WEBHOOK_METHOD=POST
-      - WEBHOOK_SECRET=your_secret_key
-      - WEBHOOK_HEADERS={"Custom-Header": "Value"}
-      - WEBHOOK_BODY_TEMPLATE={"urls": ${urls}, "timestamp": "${timestamp}", "purgeAll": ${purgeAll}}
+      GHOST_INTERNAL_URL: ${GHOST_INTERNAL_URL}
+      GHOST_PUBLIC_URL: ${GHOST_PUBLIC_URL}
+      PORT: ${PORT}
+      DEBUG: ${DEBUG}
+      WEBHOOK_URL: ${WEBHOOK_URL}
+      WEBHOOK_METHOD: ${WEBHOOK_METHOD}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      WEBHOOK_HEADERS: ${WEBHOOK_HEADERS}
+      WEBHOOK_BODY_TEMPLATE: ${WEBHOOK_BODY_TEMPLATE}
+      WEBHOOK_RETRY_COUNT: ${WEBHOOK_RETRY_COUNT}
+      WEBHOOK_RETRY_DELAY: ${WEBHOOK_RETRY_DELAY}
     ports:
       - "4000:4000"
     depends_on:
@@ -77,7 +81,7 @@ volumes:
 
 ### BunnyCDN Integration
 
-To use this with BunnyCDN, set up your webhook configuration like this:
+To use this with BunnyCDN, set up your webhook configuration in the `.env` like this:
 
 ```
 WEBHOOK_URL=https://api.bunny.net/purge
